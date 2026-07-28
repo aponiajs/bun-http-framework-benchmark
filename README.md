@@ -53,6 +53,11 @@ and the official adapter for each runtime.
 
 Elysia AOT variants are included for both Bun and Node.
 
+AponiaJS is included on Bun using its latest alpha packages. Its dependencies
+are isolated under `src/bun/aponiajs` because AponiaJS uses Elysia 1.4 while
+the standalone Elysia target uses Elysia 2. The target-specific dependencies
+are installed automatically on first build.
+
 Deno targets run directly because `Bun.build` has no Deno target.
 
 Test method: Average throughput

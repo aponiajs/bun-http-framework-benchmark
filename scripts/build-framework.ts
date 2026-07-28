@@ -1,20 +1,28 @@
 import { existsSync } from 'fs'
-import { aot } from 'elysia/plugin/aot/bun'
 
 const target = Bun.argv[2]
 if (!target) throw new Error('Usage: bun scripts/build-framework.ts <runtime/framework>')
 
-if (
-	target === 'node/adonis/index' &&
-	!existsSync('src/node/adonis/node_modules/@adonisjs/core')
-) {
+const isolatedDependencies = {
+	'bun/aponiajs/index': {
+		cwd: 'src/bun/aponiajs',
+		dependency: 'src/bun/aponiajs/node_modules/@aponiajs/platform-elysia'
+	},
+	'node/adonis/index': {
+		cwd: 'src/node/adonis',
+		dependency: 'src/node/adonis/node_modules/@adonisjs/core'
+	}
+} as const
+const isolated = isolatedDependencies[target as keyof typeof isolatedDependencies]
+
+if (isolated && !existsSync(isolated.dependency)) {
 	const install = Bun.spawn({
-		cmd: ['bun', 'install', '--cwd', 'src/node/adonis', '--frozen-lockfile'],
+		cmd: ['bun', 'install', '--cwd', isolated.cwd, '--frozen-lockfile'],
 		stdout: 'inherit',
 		stderr: 'inherit'
 	})
 	if ((await install.exited) !== 0)
-		throw new Error('Adonis dependencies failed to install')
+		throw new Error(`${target} dependencies failed to install`)
 }
 
 let [runtime, framework, index] = target.split('/')
@@ -46,7 +54,11 @@ const result = await Bun.build({
 		'uWebSockets.js'
 	],
 	plugins: isElysiaAot
-		? [aot(entry, { target: runtime as 'bun' | 'node' })]
+		? [
+				(
+					await import('elysia/plugin/aot/bun')
+				).aot(entry, { target: runtime as 'bun' | 'node' })
+			]
 		: []
 })
 

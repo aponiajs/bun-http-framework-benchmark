@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
 	buildBenchmarkArgs,
+	discoverFrameworks,
 	parseFrameworks,
 	parseRps,
 	renderResults
@@ -36,6 +37,10 @@ describe('benchmark options', () => {
 		expect(() =>
 			parseFrameworks(['--interactive', 'bun/elysia'], available)
 		).toThrow('cannot be combined')
+	})
+
+	it('discovers AponiaJS as an isolated Bun target', () => {
+		expect(discoverFrameworks()).toContain('bun/aponiajs/index')
 	})
 
 	it('aligns the Markdown results table', () => {
