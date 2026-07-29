@@ -81,20 +81,32 @@ const sleep = (seconds: number) =>
 
 const setupHint = 'Run ./install.sh to install the benchmark toolchain.'
 
-// Directories the installers use but that a shell may not have on PATH yet,
-// so a fresh machine can benchmark without opening a new shell first.
-const extraBinDirs = () => {
-	const home = Bun.env.HOME ?? ''
-	return [
-		Bun.env.BUN_INSTALL ? `${Bun.env.BUN_INSTALL}/bin` : `${home}/.bun/bin`,
-		Bun.env.DENO_INSTALL ? `${Bun.env.DENO_INSTALL}/bin` : `${home}/.deno/bin`,
-		Bun.env.GOBIN ?? '',
-		Bun.env.GOPATH ? `${Bun.env.GOPATH}/bin` : `${home}/go/bin`,
-		`${home}/.local/bin`,
+const home = () => Bun.env.HOME ?? ''
+const bunBinDir = () =>
+	Bun.env.BUN_INSTALL ? `${Bun.env.BUN_INSTALL}/bin` : `${home()}/.bun/bin`
+
+// Directories the installers use but that a shell may not have on PATH yet, so
+// a fresh machine can benchmark without opening a new shell first. Bun's own
+// bin directory is only searched for bun: it can hold a "node" shim that is
+// really bun, which silently breaks every native Node addon (uWebSockets.js).
+const extraBinDirs = (binary: string) =>
+	[
+		binary === 'bun' ? bunBinDir() : '',
+		binary === 'deno'
+			? Bun.env.DENO_INSTALL
+				? `${Bun.env.DENO_INSTALL}/bin`
+				: `${home()}/.deno/bin`
+			: '',
+		binary === 'bombardier' ? (Bun.env.GOBIN ?? '') : '',
+		binary === 'bombardier'
+			? Bun.env.GOPATH
+				? `${Bun.env.GOPATH}/bin`
+				: `${home()}/go/bin`
+			: '',
+		`${home()}/.local/bin`,
 		'/usr/local/bin',
 		'/opt/homebrew/bin'
 	].filter(Boolean)
-}
 
 export const findExecutable = (binary: string) => {
 	const direct = Bun.which(binary)
@@ -102,13 +114,58 @@ export const findExecutable = (binary: string) => {
 
 	if (binary.includes('/')) return null
 
-	for (const dir of extraBinDirs()) {
+	for (const dir of extraBinDirs(binary)) {
 		const candidate = `${dir}/${binary}`
 		if (existsSync(candidate)) return candidate
 	}
 
 	return null
 }
+
+const probe = (executable: string, args: string[]) => {
+	const result = Bun.spawnSync({
+		cmd: [executable, ...args],
+		stdout: 'pipe',
+		stderr: 'pipe'
+	})
+
+	return result.success ? result.stdout.toString().trim() : ''
+}
+
+// A binary called "node" is not necessarily Node: version managers and bun
+// both install shims under that name.
+const isRuntime = (runtime: Runtime, executable: string) => {
+	if (runtime === 'bun') return true
+	if (runtime === 'deno') return probe(executable, ['--version']).startsWith('deno')
+
+	return (
+		probe(executable, [
+			'-e',
+			'process.stdout.write(process.versions.bun ? "bun" : "node")'
+		]) === 'node'
+	)
+}
+
+const resolvedRuntimes = new Map<Runtime, string | null>()
+
+export const resolveRuntime = (runtime: Runtime) => {
+	if (resolvedRuntimes.has(runtime)) return resolvedRuntimes.get(runtime)!
+
+	const binary = runtimeCommand[runtime][0]!
+	const executable = findExecutable(binary)
+	const resolved = executable && isRuntime(runtime, executable) ? executable : null
+	if (executable && !resolved)
+		console.warn(
+			`⚠️  ${executable} is a shim, not ${runtime}; native addons such as uWebSockets.js cannot load under it`
+		)
+
+	resolvedRuntimes.set(runtime, resolved)
+
+	return resolved
+}
+
+export const skipMessage = (runtime: string, count: number) =>
+	`⚠️  ${runtime} runtime not available, skipping ${count} target${count === 1 ? '' : 's'}. ${setupHint}`
 
 export const resolveBombardier = () => {
 	const configured = Bun.env.BOMBARDIER_BIN
@@ -122,14 +179,15 @@ export const resolveBombardier = () => {
 
 export const partitionByRuntime = (
 	frameworks: string[],
-	isInstalled: (binary: string) => boolean
+	isAvailable: (runtime: Runtime) => boolean = (runtime) =>
+		Boolean(resolveRuntime(runtime))
 ) => {
 	const runnable: string[] = []
 	const skipped = new Map<Runtime, string[]>()
 
 	for (const framework of frameworks) {
 		const runtime = framework.split('/')[0] as Runtime
-		if (isInstalled(runtimeCommand[runtime][0])) {
+		if (isAvailable(runtime)) {
 			runnable.push(framework)
 			continue
 		}
@@ -303,9 +361,8 @@ export const startServer = (target: string, quiet = false) => {
 			? source
 			: builtFile(target)
 	const [binary, ...runtimeArgs] = runtimeCommand[runtime]
-	const executable = findExecutable(binary!)
-	if (!executable)
-		throw new Error(`${binary} not found in $PATH. ${setupHint}`)
+	const executable = resolveRuntime(runtime)
+	if (!executable) throw new Error(`${binary} not found in $PATH. ${setupHint}`)
 
 	const startedAt = performance.now()
 	const server = Bun.spawn({
@@ -596,14 +653,9 @@ const main = async () => {
 			}
 	resolveBombardier()
 
-	const { runnable, skipped } = partitionByRuntime(
-		options.frameworks,
-		(binary) => Boolean(findExecutable(binary))
-	)
+	const { runnable, skipped } = partitionByRuntime(options.frameworks)
 	for (const [runtime, frameworks] of skipped)
-		console.warn(
-			`⚠️  ${runtime} is not installed, skipping ${frameworks.length} target${frameworks.length === 1 ? '' : 's'}. ${setupHint}`
-		)
+		console.warn(skipMessage(runtime, frameworks.length))
 	if (!runnable.length)
 		throw new Error(`No runnable framework: no runtime installed. ${setupHint}`)
 

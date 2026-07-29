@@ -32,7 +32,12 @@ shell rc files.
 The benchmark also looks in the usual install directories (`~/.local/bin`,
 `~/.bun/bin`, `~/.deno/bin`, `~/go/bin`, `/usr/local/bin`, `/opt/homebrew/bin`)
 when a tool is not on `PATH`, so a fresh install works without opening a new
-shell. Set `BOMBARDIER_BIN` for anything more exotic:
+shell. Each runtime is identity-checked before use: a `node` that is really a
+bun shim is rejected instead of running the Node targets under Bun, where
+native addons such as `uWebSockets.js` fail to load. Node 22 or newer is
+required for the `uws` and `ultimate-express` targets.
+
+Set `BOMBARDIER_BIN` for anything more exotic:
 
 ```sh
 BOMBARDIER_BIN=/opt/bin/bombardier bun benchmark

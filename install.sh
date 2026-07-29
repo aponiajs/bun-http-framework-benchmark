@@ -222,10 +222,27 @@ install_node_tarball() {
 	return 0
 }
 
+# A "node" on PATH can be a bun shim. Native Node addons such as
+# uWebSockets.js fail to load under it, so it does not count as node.
+node_is_real() {
+	[ "$(node -e 'process.stdout.write(process.versions.bun ? "bun" : "node")' 2>/dev/null)" = node ]
+}
+
+# uWebSockets.js ships prebuilt binaries for recent Node releases only.
+warn_old_node() {
+	major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+	[ "$major" -ge 22 ] 2>/dev/null && return 0
+	warn "node $major is older than 22; uws and ultimate-express will fail to load"
+}
+
 install_node() {
-	if have node; then
+	if have node && node_is_real; then
 		ok "node: $(node --version)"
+		warn_old_node
 		return 0
+	fi
+	if have node; then
+		warn "the node on PATH ($(command -v node)) is a bun shim, not node"
 	fi
 	if [ "$CHECK_ONLY" = 1 ]; then
 		MISSING_NODE=1
@@ -236,15 +253,17 @@ install_node() {
 	log "installing node"
 
 	if [ "$(os_name)" = darwin ] && have brew; then
-		try_pkg brew install node && {
+		try_pkg brew install node && have node && node_is_real && {
 			ok "node: $(node --version)"
+			warn_old_node
 			return 0
 		}
 	fi
 
 	if have fnm; then
-		try_pkg fnm install --lts && have node && {
+		try_pkg fnm install --lts && have node && node_is_real && {
 			ok "node: $(node --version)"
+			warn_old_node
 			return 0
 		}
 	fi
