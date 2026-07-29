@@ -2,6 +2,7 @@ import {
 	buildFramework,
 	discoverFrameworks,
 	ensurePortFree,
+	partitionByRuntime,
 	startServer,
 	validateServer,
 	waitForStartup
@@ -25,7 +26,15 @@ const verifyExtraRoutes = async () => {
 
 await ensurePortFree()
 
-const frameworks = discoverFrameworks()
+const { runnable: frameworks, skipped } = partitionByRuntime(
+	discoverFrameworks(),
+	(binary) => Boolean(Bun.which(binary))
+)
+for (const [runtime, targets] of skipped)
+	console.warn(
+		`⚠️  ${runtime} is not installed, skipping ${targets.length} target${targets.length === 1 ? '' : 's'}. Run ./install.sh to install the benchmark toolchain.`
+	)
+
 const failures: string[] = []
 let stopCurrent: (() => Promise<void>) | undefined
 

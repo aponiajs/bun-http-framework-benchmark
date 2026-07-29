@@ -79,6 +79,38 @@ type BenchmarkResult = {
 const sleep = (seconds: number) =>
 	new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 
+const setupHint = 'Run ./install.sh to install the benchmark toolchain.'
+
+export const resolveBombardier = () => {
+	const configured = Bun.env.BOMBARDIER_BIN
+	const path = configured ? Bun.which(configured) : Bun.which('bombardier')
+	if (path) return path
+
+	throw new Error(
+		`bombardier not found${configured ? ` at ${configured}` : ' in $PATH'}. ${setupHint}`
+	)
+}
+
+export const partitionByRuntime = (
+	frameworks: string[],
+	isInstalled: (binary: string) => boolean
+) => {
+	const runnable: string[] = []
+	const skipped = new Map<Runtime, string[]>()
+
+	for (const framework of frameworks) {
+		const runtime = framework.split('/')[0] as Runtime
+		if (isInstalled(runtimeCommand[runtime][0])) {
+			runnable.push(framework)
+			continue
+		}
+
+		skipped.set(runtime, [...(skipped.get(runtime) ?? []), framework])
+	}
+
+	return { runnable, skipped }
+}
+
 export const parseRps = (input: string) => {
 	const rps = input.trim() === '' ? 0 : Number(input)
 	if (!Number.isInteger(rps) || rps < 0)
@@ -363,7 +395,7 @@ const runBombardier = async (args: string[]) => {
 	console.log(command.join(' '))
 
 	const process = Bun.spawn({
-		cmd: command,
+		cmd: [resolveBombardier(), ...args],
 		env: Bun.env,
 		stdout: 'pipe',
 		stderr: 'pipe'
@@ -528,23 +560,34 @@ const main = async () => {
 					: discovered,
 				rps: 0
 			}
+	resolveBombardier()
+
+	const { runnable, skipped } = partitionByRuntime(
+		options.frameworks,
+		(binary) => Boolean(Bun.which(binary))
+	)
+	for (const [runtime, frameworks] of skipped)
+		console.warn(
+			`⚠️  ${runtime} is not installed, skipping ${frameworks.length} target${frameworks.length === 1 ? '' : 's'}. ${setupHint}`
+		)
+	if (!runnable.length)
+		throw new Error(`No runnable framework: no runtime installed. ${setupHint}`)
+
 	await ensurePortFree()
 
-	console.log(`\n${options.frameworks.length} frameworks`)
-	options.frameworks.forEach((framework) => console.log(`- ${framework}`))
+	console.log(`\n${runnable.length} frameworks`)
+	runnable.forEach((framework) => console.log(`- ${framework}`))
 	console.log(
-		`RPS: ${options.rps || 'unlimited'}\nEstimated time: ${Math.ceil((options.frameworks.length * benchmarks.length * duration) / 60)} min`
+		`RPS: ${options.rps || 'unlimited'}\nEstimated time: ${Math.ceil((runnable.length * benchmarks.length * duration) / 60)} min`
 	)
 
 	rmSync('results', { recursive: true, force: true })
 	mkdirSync('results')
-	for (const runtime of new Set(
-		options.frameworks.map((item) => item.split('/')[0])
-	))
+	for (const runtime of new Set(runnable.map((item) => item.split('/')[0])))
 		mkdirSync(`results/${runtime}`)
 
 	const results: BenchmarkResult[] = []
-	for (const framework of options.frameworks) {
+	for (const framework of runnable) {
 		const result = await runFramework(framework, options.rps)
 		if (result) results.push(result)
 	}
@@ -556,10 +599,14 @@ const main = async () => {
 
 if (import.meta.main)
 	main().catch((error) => {
-		if ((error as Error).message === 'Interactive benchmark cancelled') {
+		const message = (error as Error).message
+		if (message === 'Interactive benchmark cancelled') {
 			process.exitCode = 130
 			return
 		}
-		console.error(error)
+
+		// Setup problems are actionable on their own, a stack trace only hides
+		// the hint.
+		console.error(message?.includes(setupHint) ? `❌ ${message}` : error)
 		process.exitCode = 1
 	})

@@ -2,6 +2,8 @@
   "name": "bun-http-framework-benchmark",
   "scripts": {
     "build:elysia-aot": "bun scripts/build-framework.ts bun/elysia-aot",
+    "setup": "./install.sh",
+    "doctor": "./install.sh --check",
     "benchmark": "bun bench.ts",
     "kill-port": "kill-port 3000",
     "verify": "bun scripts/verify-frameworks.ts"

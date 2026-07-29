@@ -9,6 +9,32 @@ Compare throughput benchmarks from various JavaScript HTTP framework
 - Deno
 - Bun
 
+Install everything that is missing with the setup script:
+
+```sh
+./install.sh
+```
+
+It installs bombardier (Homebrew, AUR, or the official release binary into
+`~/.local/bin`), installs Bun and Deno through their official installers,
+reports whether Node is present, and runs `bun install`.
+
+```sh
+./install.sh --check          # report what is missing, install nothing
+./install.sh --skip-runtimes  # only bombardier + project dependencies
+./install.sh --prefix DIR     # where downloaded binaries land
+```
+
+Set `BOMBARDIER_BIN` if bombardier lives outside `$PATH`:
+
+```sh
+BOMBARDIER_BIN=/opt/bin/bombardier bun benchmark
+```
+
+The benchmark fails fast with the same hint when bombardier is missing, and
+skips targets whose runtime is not installed instead of failing every one of
+them.
+
 # Run Test
 
 ```typescript
