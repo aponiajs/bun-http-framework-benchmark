@@ -81,9 +81,38 @@ const sleep = (seconds: number) =>
 
 const setupHint = 'Run ./install.sh to install the benchmark toolchain.'
 
+// Directories the installers use but that a shell may not have on PATH yet,
+// so a fresh machine can benchmark without opening a new shell first.
+const extraBinDirs = () => {
+	const home = Bun.env.HOME ?? ''
+	return [
+		Bun.env.BUN_INSTALL ? `${Bun.env.BUN_INSTALL}/bin` : `${home}/.bun/bin`,
+		Bun.env.DENO_INSTALL ? `${Bun.env.DENO_INSTALL}/bin` : `${home}/.deno/bin`,
+		Bun.env.GOBIN ?? '',
+		Bun.env.GOPATH ? `${Bun.env.GOPATH}/bin` : `${home}/go/bin`,
+		`${home}/.local/bin`,
+		'/usr/local/bin',
+		'/opt/homebrew/bin'
+	].filter(Boolean)
+}
+
+export const findExecutable = (binary: string) => {
+	const direct = Bun.which(binary)
+	if (direct) return direct
+
+	if (binary.includes('/')) return null
+
+	for (const dir of extraBinDirs()) {
+		const candidate = `${dir}/${binary}`
+		if (existsSync(candidate)) return candidate
+	}
+
+	return null
+}
+
 export const resolveBombardier = () => {
 	const configured = Bun.env.BOMBARDIER_BIN
-	const path = configured ? Bun.which(configured) : Bun.which('bombardier')
+	const path = findExecutable(configured || 'bombardier')
 	if (path) return path
 
 	throw new Error(
@@ -273,9 +302,14 @@ export const startServer = (target: string, quiet = false) => {
 		runtime === 'deno'
 			? source
 			: builtFile(target)
+	const [binary, ...runtimeArgs] = runtimeCommand[runtime]
+	const executable = findExecutable(binary!)
+	if (!executable)
+		throw new Error(`${binary} not found in $PATH. ${setupHint}`)
+
 	const startedAt = performance.now()
 	const server = Bun.spawn({
-		cmd: [...runtimeCommand[runtime], file],
+		cmd: [executable, ...runtimeArgs, file],
 		env: {
 			...Bun.env,
 			NODE_ENV: 'production',
@@ -314,7 +348,7 @@ export const buildFramework = async (target: string) => {
 	if (target.startsWith('deno/')) return null
 
 	const build = Bun.spawn({
-		cmd: ['bun', 'scripts/build-framework.ts', target],
+		cmd: [process.execPath, 'scripts/build-framework.ts', target],
 		stdout: 'inherit',
 		stderr: 'inherit'
 	})
@@ -564,7 +598,7 @@ const main = async () => {
 
 	const { runnable, skipped } = partitionByRuntime(
 		options.frameworks,
-		(binary) => Boolean(Bun.which(binary))
+		(binary) => Boolean(findExecutable(binary))
 	)
 	for (const [runtime, frameworks] of skipped)
 		console.warn(

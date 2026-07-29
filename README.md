@@ -16,24 +16,31 @@ Install everything that is missing with the setup script:
 ```
 
 It installs bombardier (Homebrew, AUR, or the official release binary into
-`~/.local/bin`), installs Bun and Deno through their official installers,
-reports whether Node is present, and runs `bun install`.
+`~/.local/bin`), Bun and Deno through their official installers, Node from the
+latest LTS tarball when no version manager is available, and then runs
+`bun install`. If the install prefix is not on `PATH` it is appended to your
+shell rc files.
 
 ```sh
-./install.sh --check          # report what is missing, install nothing
-./install.sh --skip-runtimes  # only bombardier + project dependencies
-./install.sh --prefix DIR     # where downloaded binaries land
+./install.sh --check           # report what is missing, install nothing
+./install.sh --skip-runtimes   # only bombardier + project dependencies
+./install.sh --skip-deps       # do not run "bun install"
+./install.sh --prefix DIR      # where downloaded binaries land
+./install.sh --no-modify-path  # never touch shell rc files
 ```
 
-Set `BOMBARDIER_BIN` if bombardier lives outside `$PATH`:
+The benchmark also looks in the usual install directories (`~/.local/bin`,
+`~/.bun/bin`, `~/.deno/bin`, `~/go/bin`, `/usr/local/bin`, `/opt/homebrew/bin`)
+when a tool is not on `PATH`, so a fresh install works without opening a new
+shell. Set `BOMBARDIER_BIN` for anything more exotic:
 
 ```sh
 BOMBARDIER_BIN=/opt/bin/bombardier bun benchmark
 ```
 
-The benchmark fails fast with the same hint when bombardier is missing, and
-skips targets whose runtime is not installed instead of failing every one of
-them.
+When bombardier is genuinely missing the run fails immediately with that hint
+instead of failing every target one by one, and targets whose runtime is not
+installed are skipped rather than reported as failures.
 
 # Run Test
 

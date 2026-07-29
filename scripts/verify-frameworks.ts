@@ -2,6 +2,7 @@ import {
 	buildFramework,
 	discoverFrameworks,
 	ensurePortFree,
+	findExecutable,
 	partitionByRuntime,
 	startServer,
 	validateServer,
@@ -28,7 +29,7 @@ await ensurePortFree()
 
 const { runnable: frameworks, skipped } = partitionByRuntime(
 	discoverFrameworks(),
-	(binary) => Boolean(Bun.which(binary))
+	(binary) => Boolean(findExecutable(binary))
 )
 for (const [runtime, targets] of skipped)
 	console.warn(
