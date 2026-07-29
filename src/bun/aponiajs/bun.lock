@@ -5,18 +5,18 @@
     "": {
       "name": "aponiajs-benchmark",
       "dependencies": {
-        "@aponiajs/common": "0.6.0-alpha.14",
-        "@aponiajs/platform-elysia": "0.6.0-alpha.14",
+        "@aponiajs/common": "0.6.0-alpha.17",
+        "@aponiajs/platform-elysia": "0.6.0-alpha.17",
         "elysia": "1.4.29",
       },
     },
   },
   "packages": {
-    "@aponiajs/common": ["@aponiajs/common@0.6.0-alpha.14", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "reflect-metadata": "^0.2.2" } }, "sha512-GCgxEu8q6P/Ouza7lmYNWRbqGoaWbWKFNmldrohhvj0cIP5dSv5v7WfETbVxndU17vMsz/hHEOdNrlk3kOT6Zg=="],
+    "@aponiajs/common": ["@aponiajs/common@0.6.0-alpha.17", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "reflect-metadata": "^0.2.2" } }, "sha512-AMgOrkZrZujInm29HDZuZMP++snzREqktxAi76EYvxmiPaqWsZjSkp4MovoG1l6v21DcXvDaW7+FXuv+pMxtdQ=="],
 
-    "@aponiajs/core": ["@aponiajs/core@0.6.0-alpha.14", "", { "dependencies": { "@aponiajs/common": "0.6.0-alpha.14" } }, "sha512-3R+IBxelgQT+TfUVhmfCCud1+BawsLXurt8wQU4FDx2ew2kfJyJzcYfRVTugHgGZaa9aafcUa7zyhDlqt9JFYg=="],
+    "@aponiajs/core": ["@aponiajs/core@0.6.0-alpha.17", "", { "dependencies": { "@aponiajs/common": "0.6.0-alpha.17" } }, "sha512-XCnn1vG8CBDCCNHCKO6zqxH9qbnEt6+aUkaGffxJg58vpX7gRPWAOud9TTIRNzSgJnWi9KeQPUoAXiToWglwAg=="],
 
-    "@aponiajs/platform-elysia": ["@aponiajs/platform-elysia@0.6.0-alpha.14", "", { "dependencies": { "@aponiajs/common": "0.6.0-alpha.14", "@aponiajs/core": "0.6.0-alpha.14" }, "peerDependencies": { "elysia": "^1.4.29" } }, "sha512-TLM3pjpcnl3dJLVpj50sr9aGoi69+naroJwCbkDCzDlJTPFmgjGZUS4jqRQ+oI3JwdtaMXBQ8TQ3uD5v/eA/aA=="],
+    "@aponiajs/platform-elysia": ["@aponiajs/platform-elysia@0.6.0-alpha.17", "", { "dependencies": { "@aponiajs/common": "0.6.0-alpha.17", "@aponiajs/core": "0.6.0-alpha.17" }, "peerDependencies": { "elysia": "^1.4.29" } }, "sha512-DCnOA91yODYoYKVOoeCxUD4SpFipZEhZn312AB85QGKGJUS3mXzLd5FiKp6b6p08/TPcoCQL3AlBavFiaCnZ2w=="],
 
     "@borewit/text-codec": ["@borewit/text-codec@0.2.2", "", {}, "sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ=="],
 

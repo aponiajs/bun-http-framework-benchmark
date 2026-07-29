@@ -2,8 +2,8 @@
   "name": "aponiajs-benchmark",
   "private": true,
   "dependencies": {
-    "@aponiajs/common": "0.6.0-alpha.14",
-    "@aponiajs/platform-elysia": "0.6.0-alpha.14",
+    "@aponiajs/common": "0.6.0-alpha.17",
+    "@aponiajs/platform-elysia": "0.6.0-alpha.17",
     "elysia": "1.4.29"
   }
 }
