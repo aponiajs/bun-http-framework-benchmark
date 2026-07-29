@@ -108,8 +108,26 @@ const extraBinDirs = (binary: string) =>
 		'/opt/homebrew/bin'
 	].filter(Boolean)
 
+// "bun run" prepends a throwaway directory holding a "node" that is really
+// bun, so searching $PATH for node has to step over it and over bun's own bin
+// directory to reach a real Node install.
+export const searchPath = (binary: string) => {
+	const path = Bun.env.PATH ?? ''
+	if (binary !== 'node') return path
+
+	return path
+		.split(':')
+		.filter(
+			(entry) =>
+				entry &&
+				!/(^|\/)bun-node-[^/]*\/?$/.test(entry) &&
+				entry.replace(/\/$/, '') !== bunBinDir()
+		)
+		.join(':')
+}
+
 export const findExecutable = (binary: string) => {
-	const direct = Bun.which(binary)
+	const direct = Bun.which(binary, { PATH: searchPath(binary) })
 	if (direct) return direct
 
 	if (binary.includes('/')) return null
